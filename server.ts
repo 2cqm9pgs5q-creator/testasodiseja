@@ -3,11 +3,53 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import { google } from "googleapis";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const db = new Database("participants.db");
+
+// Google Sheets setup
+async function appendToGoogleSheet(data: any) {
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!spreadsheetId || !clientEmail || !privateKey) {
+    console.warn("Google Sheets credentials missing. Skipping sheet update.");
+    return;
+  }
+
+  try {
+    const auth = new google.auth.JWT({
+      email: clientEmail,
+      key: privateKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+    
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Dalyviai!A:F', // Assumes data goes to 'Dalyviai' sheet, columns A to F
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          data.firstName,
+          data.lastName,
+          data.email,
+          data.club || '',
+          data.gender,
+          new Date().toLocaleString('lt-LT')
+        ]]
+      }
+    });
+    console.log("Data appended to Google Sheet successfully.");
+  } catch (error) {
+    console.error("Error appending to Google Sheet:", error);
+  }
+}
 
 // Initialize database
 db.exec(`
@@ -30,13 +72,17 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  app.post("/api/register", (req, res) => {
+  app.post("/api/register", async (req, res) => {
     const { firstName, lastName, email, club, gender } = req.body;
     try {
       const stmt = db.prepare(
         "INSERT INTO participants (firstName, lastName, email, club, gender) VALUES (?, ?, ?, ?, ?)"
       );
       stmt.run(firstName, lastName, email, club, gender);
+      
+      // Also append to Google Sheets
+      await appendToGoogleSheet({ firstName, lastName, email, club, gender });
+      
       res.status(201).json({ message: "Registracija sėkminga!" });
     } catch (error) {
       res.status(500).json({ error: "Registracijos klaida" });
@@ -83,17 +129,6 @@ async function startServer() {
     } catch (error) {
       res.status(500).json({ error: "Klaida trinant dalyvius" });
     }
-  });
-
-  app.post("/api/send-email", (req, res) => {
-    const { recipients, subject, message } = req.body;
-    // Mock email sending
-    console.log(`Sending email to: ${recipients.join(", ")}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Message: ${message}`);
-    
-    // In a real app, you would use nodemailer or an API like SendGrid here
-    res.json({ message: "Laiškas sėkmingai išsiųstas (simuliacija)" });
   });
 
   // Vite middleware for development
