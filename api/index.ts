@@ -1,14 +1,11 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const db = new Database("participants.db");
 
 // Google Sheets setup
 async function appendToGoogleSheet(data: any) {
@@ -51,20 +48,6 @@ async function appendToGoogleSheet(data: any) {
   }
 }
 
-// Initialize database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS participants (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    firstName TEXT NOT NULL,
-    lastName TEXT NOT NULL,
-    email TEXT NOT NULL,
-    club TEXT,
-    gender TEXT NOT NULL,
-    isNew INTEGER DEFAULT 1,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -75,12 +58,7 @@ async function startServer() {
   app.post("/api/register", async (req, res) => {
     const { firstName, lastName, email, club, gender } = req.body;
     try {
-      const stmt = db.prepare(
-        "INSERT INTO participants (firstName, lastName, email, club, gender) VALUES (?, ?, ?, ?, ?)"
-      );
-      stmt.run(firstName, lastName, email, club, gender);
-      
-      // Also append to Google Sheets
+      // Append to Google Sheets
       await appendToGoogleSheet({ firstName, lastName, email, club, gender });
       
       res.status(201).json({ message: "Registracija sėkminga!" });
@@ -97,9 +75,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    const distPath = path.join(__dirname, "..", "dist");
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
