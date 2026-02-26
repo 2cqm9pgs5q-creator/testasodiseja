@@ -266,7 +266,7 @@ const RegistrationPage = () => {
               {[
                 { icon: <Bike />, title: "Trasa", desc: "Beveik 400km žvyrkelio, asfalto ir miško takų." },
                 { icon: <Users />, title: "Bendruomenės stiprinimas", desc: "Susitik su bendraminčiais ir dalinkis patirtimi." },
-                { icon: <CheckCircle2 />, title: "Stovykla", desc: "Įskaičiuotas maitinimas vakare ir ryte." }
+                { icon: <CheckCircle2 />, title: "Stovykla", desc: "Įskaičiuota nakvynė, maitinimas vakare ir ryte." }
               ].map((item, i) => (
                 <div key={i} className="flex gap-4 sm:gap-6 group">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all shrink-0">{React.cloneElement(item.icon as React.ReactElement, { size: 20 })}</div>
