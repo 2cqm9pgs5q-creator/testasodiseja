@@ -89,50 +89,8 @@ async function startServer() {
     }
   });
 
-  app.get("/api/participants", (req, res) => {
-    try {
-      const participants = db.prepare("SELECT * FROM participants ORDER BY createdAt DESC").all();
-      res.json(participants);
-    } catch (error) {
-      res.status(500).json({ error: "Nepavyko gauti dalyvių sąrašo" });
-    }
-  });
-
-  app.post("/api/participants/mark-seen", (req, res) => {
-    try {
-      db.prepare("UPDATE participants SET isNew = 0").run();
-      res.json({ message: "Visi dalyviai pažymėti kaip peržiūrėti" });
-    } catch (error) {
-      res.status(500).json({ error: "Klaida atnaujinant būseną" });
-    }
-  });
-
-  app.delete("/api/participants/:id", (req, res) => {
-    const { id } = req.params;
-    try {
-      db.prepare("DELETE FROM participants WHERE id = ?").run(id);
-      res.json({ message: "Dalyvis ištrintas" });
-    } catch (error) {
-      res.status(500).json({ error: "Klaida trinant dalyvį" });
-    }
-  });
-
-  app.post("/api/participants/bulk-delete", (req, res) => {
-    const { ids } = req.body;
-    try {
-      const stmt = db.prepare("DELETE FROM participants WHERE id = ?");
-      const deleteMany = db.transaction((ids) => {
-        for (const id of ids) stmt.run(id);
-      });
-      deleteMany(ids);
-      res.json({ message: "Dalyviai ištrinti" });
-    } catch (error) {
-      res.status(500).json({ error: "Klaida trinant dalyvius" });
-    }
-  });
-
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -145,9 +103,19 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen if not running on Vercel
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+const appPromise = startServer();
+
+export default async (req: any, res: any) => {
+  const app = await appPromise;
+  return app(req, res);
+};
