@@ -56,6 +56,30 @@ const RegistrationPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-[#0A0A0A]" />
         <div className="relative h-full max-w-7xl mx-auto px-4 flex flex-col justify-center items-center text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+              <div className="relative group">
+                <img 
+                  src="/logo.png" 
+                  alt="Utena Cycling Team" 
+                  className="h-24 md:h-32 w-auto mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const placeholder = document.createElement('div');
+                      placeholder.className = "h-24 md:h-32 flex items-center justify-center text-white/20 italic text-sm border-2 border-dashed border-white/10 rounded-2xl px-8";
+                      placeholder.innerText = "Logotipo vieta (logo.png)";
+                      parent.appendChild(placeholder);
+                    }
+                  }}
+                />
+              </div>
+            </motion.div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold uppercase tracking-widest mb-6"><Sparkles size={14} className="text-yellow-400" /> Gravel Odiseja 2026 • Gegužės 23–24 d.</div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-black tracking-tighter mb-6 uppercase italic break-words leading-[0.9]">Aukštaitijos <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/40">Gravel Odiseja</span></h1>
             <p className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto font-medium leading-relaxed px-4">Leiskis į nepamirštamą nuotykį Aukštaitijos miškais ir žvyrkeliais.</p>
