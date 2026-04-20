@@ -30,7 +30,8 @@ const RegistrationPage = () => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', club: '', gender: 'Vyras' });
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', club: '', gender: 'Vyras', agreedToTerms: false });
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const participantsSectionRef = useRef<HTMLDivElement>(null);
 
   const scrollToParticipants = () => {
@@ -168,6 +169,21 @@ const RegistrationPage = () => {
                       <button key={option} type="button" onClick={() => setFormData({...formData, gender: option})} className={`flex-1 py-4 rounded-2xl font-bold border-2 ${formData.gender === option ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-100'}`}>{option}</button>
                     ))}
                   </div>
+
+                  <div className="flex items-start gap-3 mt-2">
+                    <input 
+                      required 
+                      type="checkbox" 
+                      id="agreedToTerms"
+                      className="mt-1 w-5 h-5 accent-black rounded border-gray-300 focus:ring-black cursor-pointer"
+                      checked={formData.agreedToTerms}
+                      onChange={e => setFormData({...formData, agreedToTerms: e.target.checked})}
+                    />
+                    <label htmlFor="agreedToTerms" className="text-sm font-medium text-gray-600 leading-tight cursor-pointer">
+                      Susipažinau ir sutinku su <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-black font-bold underline hover:text-gray-600">renginio nuostatais</button>.
+                    </label>
+                  </div>
+
                   <button disabled={isRegistering} className="w-full py-4 sm:py-5 bg-black text-white rounded-xl sm:rounded-[1.5rem] font-black text-base sm:text-xl uppercase italic tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 mt-6">
                     {isRegistering ? 'Siunčiama...' : <><span className="truncate">Patvirtinti registraciją</span><ChevronRight size={20} /></>}
                   </button>
@@ -400,6 +416,94 @@ const RegistrationPage = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Terms and Conditions Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#111] border border-white/10 rounded-[2rem] w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col relative"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#111] z-10 font-bold uppercase italic tracking-tighter">
+                <span>Renginio nuostatai</span>
+                <button onClick={() => setShowTermsModal(false)} className="p-2 hover:bg-white/5 rounded-full"><X size={20} /></button>
+              </div>
+              <div className="p-8 sm:p-10 overflow-y-auto text-sm leading-relaxed text-white/70 space-y-6">
+                <div>
+                  <h3 className="text-white font-bold mb-4 uppercase italic">AUKŠTAITIJOS GRAVEL ODISĖJA 2026 NUOSTATAI</h3>
+                  <div className="space-y-4">
+                    <section>
+                      <h4 className="text-white font-bold mb-2">1. Bendrosios nuostatos</h4>
+                      <p>1.1. Šie nuostatai reglamentuoja „Aukštaitijos Gravel Odisėja 2026“ renginio organizavimo tvarką, dalyvavimo sąlygas, saugumo reikalavimus ir dalyvių atsakomybę.</p>
+                      <p>1.2. Renginys yra rekreacinio pobūdžio dviračių žygis, kurio tikslas – skatinti aktyvų gyvenimo būdą, bendruomeniškumą bei dviračių kultūrą.</p>
+                      <p>1.3. Renginys nėra sporto varžybos – jame nefiksuojami rezultatai, neskirstomos vietos ir nesiekiama konkurencinio rungtyniavimo.</p>
+                      <p>1.4. Renginio metu svarbiausias akcentas – dalyvavimas, bendruomeniškumas, saugumas bei Utenos regiono pažinimas.</p>
+                    </section>
+                    
+                    <section>
+                      <h4 className="text-white font-bold mb-2">2. Renginio tikslas</h4>
+                      <p>Organizuoti dviejų dienų rekreacinį dviračių renginį, skatinantį aktyvų gyvenimo būdą, tvarią judumo kultūrą, bendravimą ir Utenos regiono gamtinio bei kultūrinio paveldo pažinimą.</p>
+                    </section>
+
+                    <section>
+                      <h4 className="text-white font-bold mb-2">3. Renginio uždaviniai</h4>
+                      <p>3.1. Organizuoti saugų ir kokybišką dviračių maršrutą per Utenos regiono vietoves su startu ir finišu Utenoje.</p>
+                      <p>3.2. Skatinti dalyvių fizinį aktyvumą, ištvermę bei asmeninę motyvaciją aktyviai leisti laisvalaikį.</p>
+                      <p>3.3. Kurti bendruomenišką atmosferą ir stiprinti socialinius ryšius tarp dalyvių.</p>
+                      <p>3.4. Populiarinti dviračių kultūrą, aktyvų turizmą ir tvarų judumą Utenos regione.</p>
+                      <p>3.5. Sudaryti galimybę įvairaus pasirengimo dviračių entuziastams dalyvauti ne varžybinėje ir palaikančioje aplinkoje.</p>
+                    </section>
+
+                    <section>
+                      <h4 className="text-white font-bold mb-2">4. Renginio pobūdis</h4>
+                      <p>4.1. Renginys yra rekreacinis dviračių žygis, kuriame dalyviai važiuoja savo pasirinktu tempu.</p>
+                      <p>4.2. Dalyviai nėra reitinguojami, laikas nefiksuojamas, prizinių vietų nėra.</p>
+                      <p>4.3. Renginys orientuotas į bendrą patirtį, gamtos pažinimą, bendravimą ir aktyvų laisvalaikį.</p>
+                      <p>4.4. Trasos viduryje numatytas bendras sustojimas poilsiui ir nakvynei.</p>
+                    </section>
+
+                    <section>
+                      <h4 className="text-white font-bold mb-2">5. Dalyviai</h4>
+                      <p>5.1. Renginyje gali dalyvauti asmenys nuo 18 metų.</p>
+                      <p>5.2. Dalyvis privalo būti fiziškai pasirengęs įveikti numatytą maršrutą dviračiu.</p>
+                      <p>5.3. Registruodamiesi dalyviai patvirtina, kad: susipažino su renginio nuostatais; sutinka laikytis saugumo reikalavimų; prisiima atsakomybę už savo sveikatą ir fizinį pasirengimą.</p>
+                    </section>
+
+                    <section>
+                      <h4 className="text-white font-bold mb-2">6. Saugumas renginio metu</h4>
+                      <p>6.1. Renginio dalyviai privalo laikytis Lietuvos Respublikos kelių eismo taisyklių.</p>
+                      <p>6.2. Važiuodami viešais keliais dalyviai privalo: važiuoti viena eile, jei to reikalauja eismo sąlygos; gerbti kitus eismo dalyvius; laikytis organizatorių ir savanorių nurodymų; dėvėti dviratininko šalmą; naudoti techniškai tvarkingą ir saugų dviratį; turėti veikiančias priekinę ir galinę dviračio lempas, o tamsiu paros metu dėvėti šviesą atspindinčią liemenę.</p>
+                      <p>6.3. Dalyviai privalo elgtis atsakingai ir nekelti pavojaus sau bei kitiems eismo dalyviams.</p>
+                      <p>6.4. Organizatoriai neatsako už nelaimingus atsitikimus, kurie įvyko renginio metu.</p>
+                    </section>
+
+                    <section>
+                      <h4 className="text-white font-bold mb-2">7. Dalyvių atsakomybė</h4>
+                      <p>7.1. Kiekvienas dalyvis pats atsako už savo sveikatą, fizinę būklę ir pasirengimą renginiui. Dalyvis prisiima visą su dalyvavimu renginyje susijusią riziką, įskaitant, bet neapsiribojant: oro sąlygomis; dviračio ar inventoriaus gedimais; kelio dangos ar maršruto būkle; kontaktu su kitais eismo dalyviais ar renginio dalyviais; galimomis rizikomis, atsirandančiomis dėl kitų asmenų neatsargumo ar trečiųjų asmenų veiksmų.</p>
+                      <p>7.2. Dalyvis įsipareigoja laikytis saugaus elgesio taisyklių viso renginio metu.</p>
+                      <p>7.3. Dalyvis privalo saugoti gamtą ir nešiukšlinti maršruto teritorijoje.</p>
+                      <p>7.4. Dalyviai privalo gerbti kitus renginio dalyvius, savanorius ir vietos bendruomenes.</p>
+                      <p>7.5. Registruodamasis renginyje dalyvis sutinka, kad renginio metu padarytos nuotraukos ir vaizdo medžiaga gali būti naudojamos organizatorių komunikacijos ir rinkodaros tikslais be atskiro dalyvio sutikimo.</p>
+                      <p>7.6. Organizatoriai turi teisę atšaukti renginį dėl force majeure aplinkybių, kurių neįmanoma numatyti, išvengti ar pašalinti.</p>
+                    </section>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-[#111] border-t border-white/5">
+                <button 
+                  onClick={() => setShowTermsModal(false)}
+                  className="w-full py-4 bg-white text-black font-bold rounded-2xl uppercase tracking-widest text-sm"
+                >
+                  Supratau
+                </button>
               </div>
             </motion.div>
           </div>
