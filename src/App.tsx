@@ -27,7 +27,34 @@ const RegistrationPage = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [isLoadingParticipants, setIsLoadingParticipants] = useState(true);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', club: '', gender: 'Vyras' });
+
+  const fetchParticipants = async () => {
+    setIsLoadingParticipants(true);
+    setErrorStatus(null);
+    try {
+      const res = await fetch('/api/participants');
+      const data = await res.json();
+      
+      if (res.ok) {
+        setParticipants(data);
+      } else {
+        setErrorStatus(data.error || 'Nepavyko gauti duomenų');
+      }
+    } catch (error: any) {
+      console.error('Nepavyko gauti dalyvių sąrašo:', error);
+      setErrorStatus(`Klaida jungiantis prie serverio: ${error.message || 'Nežinoma klaida'}`);
+    } finally {
+      setIsLoadingParticipants(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchParticipants();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,12 +65,18 @@ const RegistrationPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+      
+      const data = await res.json();
+      
       if (res.ok) {
         setRegistrationSuccess(true);
         setFormData({ firstName: '', lastName: '', email: '', club: '', gender: 'Vyras' });
+        fetchParticipants(); // Atsišviežiname sąrašą
+      } else {
+        alert(`Klaida: ${data.error || 'Nepavyko užregistruoti'}. ${data.details || ''}`);
       }
     } catch (error) {
-      alert('Klaida');
+      alert('Nepavyko susisiekti su serveriu. Patikrinkite interneto ryšį.');
     } finally {
       setIsRegistering(false);
     }
@@ -56,30 +89,6 @@ const RegistrationPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-[#0A0A0A]" />
         <div className="relative h-full max-w-7xl mx-auto px-4 flex flex-col justify-center items-center text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="mb-8"
-            >
-              <div className="relative group">
-                <img 
-                  src="/logo.png" 
-                  alt="Utena Cycling Team" 
-                  className="h-24 md:h-32 w-auto mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    const parent = e.currentTarget.parentElement;
-                    if (parent) {
-                      const placeholder = document.createElement('div');
-                      placeholder.className = "h-24 md:h-32 flex items-center justify-center text-white/20 italic text-sm border-2 border-dashed border-white/10 rounded-2xl px-8";
-                      placeholder.innerText = "Logotipo vieta (logo.png)";
-                      parent.appendChild(placeholder);
-                    }
-                  }}
-                />
-              </div>
-            </motion.div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold uppercase tracking-widest mb-6"><Sparkles size={14} className="text-yellow-400" /> Gravel Odiseja 2026 • Gegužės 23–24 d.</div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-black tracking-tighter mb-6 uppercase italic break-words leading-[0.9]">Aukštaitijos <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/40">Gravel Odiseja</span></h1>
             <p className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto font-medium leading-relaxed px-4">Leiskis į nepamirštamą nuotykį Aukštaitijos miškais ir žvyrkeliais.</p>
@@ -144,6 +153,80 @@ const RegistrationPage = () => {
             )}
           </motion.div>
         </div>
+
+        {/* Dalyvių sąrašas */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }}
+          className="mt-32"
+        >
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <h2 className="text-3xl sm:text-5xl font-black italic uppercase tracking-tighter mb-4">Dalyvių sąrašas</h2>
+              <p className="text-white/40 font-bold uppercase tracking-widest text-xs sm:text-sm">Visi oficialiai užsiregistravę odisėjos dalyviai</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-3 w-fit">
+              <span className="text-white/40 text-sm font-bold uppercase">Iš viso:</span>
+              <span className="text-2xl font-black italic">{participants.length}</span>
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/5">
+                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Nr.</th>
+                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Dalyvis</th>
+                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Klubas</th>
+                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40 text-right">Lytis</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {isLoadingParticipants ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-20 text-center text-white/20 italic font-medium">Kraunami dalyviai...</td>
+                    </tr>
+                  ) : errorStatus ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-20 text-center">
+                        <div className="text-red-400 font-medium mb-4">{errorStatus}</div>
+                        <button 
+                          onClick={() => fetchParticipants()}
+                          className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold uppercase hover:bg-white hover:text-black transition-all"
+                        >
+                          Bandyti dar kartą
+                        </button>
+                      </td>
+                    </tr>
+                  ) : participants.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-20 text-center text-white/20 italic font-medium">Būk pirmas užsiregistravęs!</td>
+                    </tr>
+                  ) : (
+                    participants.map((p, i) => (
+                      <tr key={i} className="hover:bg-white/5 transition-colors group">
+                        <td className="px-6 py-5 text-white/20 font-mono text-sm">{(i + 1).toString().padStart(2, '0')}</td>
+                        <td className="px-6 py-5">
+                          <div className="font-bold text-lg group-hover:text-white transition-colors uppercase italic">{p.firstName} {p.lastName}</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-white/40 font-medium">{p.club || '—'}</div>
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${p.gender === 'Vyras' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-pink-500/10 text-pink-400 border border-pink-500/20'}`}>
+                            {p.gender}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
       </div>
       <footer className="border-t border-white/5 py-12 text-center text-white/30 text-sm">© 2026 Aukštaitijos Gravel Odiseja</footer>
 
@@ -244,7 +327,7 @@ const RegistrationPage = () => {
                     <div className="flex flex-col sm:flex-row gap-8 items-start">
                       <div className="bg-white text-black p-6 rounded-3xl shrink-0">
                         <div className="text-xs font-bold uppercase opacity-50 mb-1">Kaina asmeniui</div>
-                        <div className="text-4xl font-black italic">20 €</div>
+                        <div className="text-4xl font-black italic">25 €</div>
                       </div>
                       <div className="space-y-3">
                         <p className="font-bold text-white">Į kainą įskaičiuota:</p>

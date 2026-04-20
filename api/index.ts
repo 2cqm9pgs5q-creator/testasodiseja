@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,14 +8,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Google Sheets setup
-async function appendToGoogleSheet(data: any) {
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+async function getGoogleSheetsClient() {
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID?.trim().replace(/"/g, '');
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL?.trim().replace(/"/g, '');
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/"/g, '').trim();
 
   if (!spreadsheetId || !clientEmail || !privateKey) {
-    console.warn("Google Sheets credentials missing. Skipping sheet update.");
-    return;
+    const missing = [
+      !spreadsheetId ? 'GOOGLE_SHEET_ID' : '',
+      !clientEmail ? 'GOOGLE_CLIENT_EMAIL' : '',
+      !privateKey ? 'GOOGLE_PRIVATE_KEY' : ''
+    ].filter(Boolean);
+    const msg = `Nenustatyti aplinkos kintamieji: ${missing.join(', ')}. Patikrinkite Vercel/AI Studio nustatymus.`;
+    console.error(msg);
+    throw new Error(msg);
   }
 
   try {
@@ -24,11 +31,20 @@ async function appendToGoogleSheet(data: any) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    return { sheets: google.sheets({ version: 'v4', auth }), spreadsheetId };
+  } catch (error: any) {
+    console.error("Autentifikacijos klaida kuriant Google Auth klientą:", error.message);
+    throw new Error(`Google Auth klaida: ${error.message}`);
+  }
+}
+
+async function appendToGoogleSheet(data: any) {
+  try {
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient();
     
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: 'Dalyviai!A:F', // Assumes data goes to 'Dalyviai' sheet, columns A to F
+      range: 'Dalyviai!A:F',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[
@@ -37,13 +53,47 @@ async function appendToGoogleSheet(data: any) {
           data.email,
           data.club || '',
           data.gender,
-          new Date().toLocaleString('lt-LT')
+          new Date().toLocaleString('lt-LT', { timeZone: 'Europe/Vilnius' })
         ]]
       }
     });
-    console.log("Data appended to Google Sheet successfully.");
-  } catch (error) {
-    console.error("Error appending to Google Sheet:", error);
+    console.log("Duomenys sėkmingai įrašyti į Google Sheet.");
+  } catch (error: any) {
+    console.error("Google Sheets API klaida (rašant):", error.message || error);
+    throw error;
+  }
+}
+
+async function getParticipantsFromGoogleSheet() {
+  try {
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient();
+    
+    console.log(`Bandoma nuskaityti duomenis iš Sheet ID: ${spreadsheetId}, diapazonas: Dalyviai!A2:E1000`);
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Dalyviai!A2:E1000',
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      console.log("Lentelė tuščia arba lapas 'Dalyviai' neturi duomenų nuo A2.");
+      return [];
+    }
+
+    // Filtruojame tuščias eilutes ir validuojame duomenis
+    return rows
+      .filter((row: any) => row && row.length >= 2 && (row[0] || row[1]))
+      .map((row: any) => ({
+        firstName: row[0] || 'Be vardo',
+        lastName: row[1] || '',
+        club: row[3] || '',
+        gender: row[4] || 'Vyras'
+      }));
+  } catch (error: any) {
+    const errorDetail = error.response?.data?.error?.message || error.message || error;
+    console.error("Google Sheets API klaida (skaitant):", errorDetail);
+    throw new Error(`Google Sheets klaida: ${errorDetail}`);
   }
 }
 
@@ -54,27 +104,48 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  app.post("/api/register", async (req, res) => {
-    const { firstName, lastName, email, club, gender } = req.body;
+  app.get("/api/participants", async (req, res) => {
     try {
-      // Append to Google Sheets
-      await appendToGoogleSheet({ firstName, lastName, email, club, gender });
-      
-      res.status(201).json({ message: "Registracija sėkminga!" });
-    } catch (error) {
-      res.status(500).json({ error: "Registracijos klaida" });
+      const participants = await getParticipantsFromGoogleSheet();
+      res.json(participants);
+    } catch (error: any) {
+      console.error("Klaida gaunant dalyvius:", error);
+      res.status(500).json({ error: error.message || "Nepavyko gauti dalyvių sąrašo" });
     }
   });
 
-  // Vite middleware for development
+  app.post("/api/register", async (req, res) => {
+    const { firstName, lastName, email, club, gender } = req.body;
+    console.log("Gauta nauja registracija:", { firstName, lastName, email });
+    
+    try {
+      await appendToGoogleSheet({ firstName, lastName, email, club, gender });
+      res.status(201).json({ message: "Registracija sėkminga!" });
+    } catch (error: any) {
+      console.error("Registracijos proceso klaida:", error);
+      res.status(500).json({ 
+        error: "Serverio klaida registruojant", 
+        details: error.message || "Unknown error" 
+      });
+    }
+  });
+
+  // Vite middleware for development (AI Studio environment)
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
+    try {
+      // Use dynamic import to avoid bundling Vite on Vercel
+      const { createServer } = await import("vite");
+      const vite = await createServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+      console.log("Vite middleware loaded for development");
+    } catch (e) {
+      console.warn("Vite could not be loaded, static files might not be served.");
+    }
+  } else if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    // Serve static files in production or on Vercel if needed
     const distPath = path.join(__dirname, "..", "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
