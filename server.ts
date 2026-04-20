@@ -4,9 +4,16 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
+import { Resend } from "resend";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Resend setup
+let resend: Resend | null = null;
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+}
 
 // Google Sheets setup
 async function getGoogleSheetsClient() {
@@ -76,6 +83,63 @@ async function getParticipantsFromGoogleSheet() {
     }));
 }
 
+async function sendConfirmationEmail(data: any) {
+  if (!resend) {
+    console.warn("Resend API raktas nenustatytas, laiškas nebus siunčiamas.");
+    return;
+  }
+
+  try {
+    const { data: emailData, error } = await resend.emails.send({
+      from: 'Aukštaitijos Gravel Odisėja <dalyvauk@utenacyclingteam.com>',
+      to: [data.email],
+      replyTo: 'efkka.b@gmail.com',
+      subject: 'Registracijos patvirtinimas: Aukštaitijos Gravel Odisėja 2026',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #eeeeee; border-radius: 16px; color: #1a1a1a;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="margin: 0; color: #000; text-transform: uppercase; letter-spacing: 2px; font-style: italic;">Aukštaitijos Gravel Odisėja 2026</h2>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6;">Dėkojame, kad užsiregistravote į <strong>„Aukštaitijos gravel odisėja 2026“</strong>! Džiaugiamės, kad prisijungsite prie mūsų ir kartu leisitės į šią gravel dviračių kelionę po Aukštaitijos apylinkes.</p>
+          
+          <div style="background-color: #fff9f0; padding: 25px; border-radius: 12px; border: 1px solid #ffecb3; margin: 25px 0;">
+            <h3 style="margin-top: 0; color: #856404; font-size: 18px;">Svarbu: Registracijos patvirtinimas</h3>
+            <p style="margin-bottom: 15px; font-size: 15px;">Kad Jūsų registracija būtų galutinai patvirtinta, prašome atlikti <strong>25 EUR</strong> startinį mokestį.</p>
+            
+            <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
+              <p style="margin: 5px 0; font-size: 14px;"><strong>Gavėjas:</strong> VŠI Utena Cycling Team</p>
+              <p style="margin: 5px 0; font-size: 14px;"><strong>Sąskaitos numeris (IBAN):</strong> <code style="background: #f4f4f4; padding: 2px 4px; border-radius: 4px;">LT537300010184634043</code></p>
+              <p style="margin: 5px 0; font-size: 14px;"><strong>Suma:</strong> 25 EUR</p>
+              <p style="margin: 5px 0; font-size: 14px;"><strong>Paskirtis:</strong> ${data.firstName} ${data.lastName}</p>
+            </div>
+          </div>
+          
+          <p style="font-size: 15px; line-height: 1.6;">Likus keliom dienom iki renginio, pasidalinsime GPX failu, tikslia starto ir nakvynės vieta bei kita svarbia informacija.</p>
+          
+          <p style="font-size: 15px; line-height: 1.6;">Turite klausimų? Brūkštelėkite atsakymą į šį laišką.</p>
+          
+          <p style="font-size: 16px; font-weight: bold; margin-top: 30px;">Iki susitikimo prie starto linijos!</p>
+          
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee; color: #777777; font-size: 13px;">
+            <p style="margin: 0;">Su linkėjimais,</p>
+            <p style="margin: 5px 0; font-weight: bold; color: #333333;">Organizatorių komanda</p>
+            <p style="margin: 0;">„Aukštaitijos gravel odisėja 2026“</p>
+          </div>
+        </div>
+      `
+    });
+
+    if (error) {
+      console.error("Resend klaida siunčiant laišką:", error);
+    } else {
+      console.log("Patvirtinimo laiškas sėkmingai išsiųstas:", emailData?.id);
+    }
+  } catch (error) {
+    console.error("Netikėta klaida siunčiant laišką per Resend:", error);
+  }
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json());
@@ -93,6 +157,9 @@ async function startServer() {
   app.post("/api/register", async (req, res) => {
     try {
       await appendToGoogleSheet(req.body);
+      // Siunčiame patvirtinimo laišką (nebūtina laukti atsakymo pabaigos, kad pagreitintume registraciją vartotojui)
+      sendConfirmationEmail(req.body).catch(e => console.error("Email error:", e));
+      
       res.status(201).json({ message: "Success" });
     } catch (error: any) {
       console.error("Registracijos klaida:", error.message);
