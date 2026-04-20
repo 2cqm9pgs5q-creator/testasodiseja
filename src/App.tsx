@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { 
   Bike, 
@@ -31,6 +31,11 @@ const RegistrationPage = () => {
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', club: '', gender: 'Vyras' });
+  const participantsSectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToParticipants = () => {
+    participantsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const fetchParticipants = async () => {
     setIsLoadingParticipants(true);
@@ -113,13 +118,23 @@ const RegistrationPage = () => {
               ))}
             </div>
 
-            <button 
-              onClick={() => setShowInfoModal(true)}
-              className="mt-10 flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white font-bold hover:bg-white hover:text-black transition-all duration-300"
-            >
-              <Info size={20} />
-              Detali informacija apie renginį
-            </button>
+            <div className="flex flex-wrap gap-4 mt-10">
+              <button 
+                onClick={() => setShowInfoModal(true)}
+                className="flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-white font-bold hover:bg-white hover:text-black transition-all duration-300"
+              >
+                <Info size={20} />
+                Detali informacija
+              </button>
+              
+              <button 
+                onClick={scrollToParticipants}
+                className="flex items-center gap-3 px-6 py-3 bg-white/10 border border-white/20 rounded-2xl text-white font-bold hover:bg-[#C0FF00] hover:text-black hover:border-[#C0FF00] transition-all duration-300"
+              >
+                <Users size={20} />
+                Dalyvių sąrašas
+              </button>
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-8 md:p-12 text-black shadow-2xl relative overflow-hidden w-full">
@@ -156,7 +171,8 @@ const RegistrationPage = () => {
 
         {/* Dalyvių sąrašas */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }} 
+          ref={participantsSectionRef}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }} 
           viewport={{ once: true }}
           className="mt-32"
@@ -176,14 +192,15 @@ const RegistrationPage = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Nr.</th>
-                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Dalyvis</th>
-                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40">Klubas</th>
-                    <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-white/40 text-right">Lytis</th>
+                  <tr className="border-b border-white/10 bg-white/5 text-[10px] md:text-xs">
+                    <th className="px-3 md:px-6 py-5 font-black uppercase tracking-widest text-white/40 border-r border-white/5 w-12 text-center">Nr.</th>
+                    <th className="px-4 md:px-6 py-5 font-black uppercase tracking-widest text-white/40">Dalyvis</th>
+                    <th className="hidden md:table-cell px-6 py-5 font-black uppercase tracking-widest text-white/40">Klubas</th>
+                    <th className="px-4 md:px-6 py-5 font-black uppercase tracking-widest text-white/40 text-right">Lytis</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
+                  {/* ... remains similar, just applying cell changes ... */}
                   {isLoadingParticipants ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-20 text-center text-white/20 italic font-medium">Kraunami dalyviai...</td>
@@ -207,15 +224,16 @@ const RegistrationPage = () => {
                   ) : (
                     participants.map((p, i) => (
                       <tr key={i} className="hover:bg-white/5 transition-colors group">
-                        <td className="px-6 py-5 text-white/20 font-mono text-sm">{(i + 1).toString().padStart(2, '0')}</td>
-                        <td className="px-6 py-5">
-                          <div className="font-bold text-lg group-hover:text-white transition-colors uppercase italic">{p.firstName} {p.lastName}</div>
+                        <td className="px-3 md:px-6 py-5 text-white/20 font-mono text-xs md:text-sm border-r border-white/5 text-center">{(i + 1).toString().padStart(2, '0')}</td>
+                        <td className="px-4 md:px-6 py-5">
+                          <div className="font-bold text-sm sm:text-base md:text-lg group-hover:text-white transition-colors uppercase italic leading-tight">{p.firstName} {p.lastName}</div>
+                          <div className="md:hidden text-white/40 text-[10px] mt-1 font-medium italic">{p.club || '—'}</div>
                         </td>
-                        <td className="px-6 py-5">
+                        <td className="hidden md:table-cell px-6 py-5">
                           <div className="text-white/40 font-medium">{p.club || '—'}</div>
                         </td>
-                        <td className="px-6 py-5 text-right">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${p.gender === 'Vyras' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-pink-500/10 text-pink-400 border border-pink-500/20'}`}>
+                        <td className="px-4 md:px-6 py-5 text-right">
+                          <span className={`inline-block px-2 md:px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest ${p.gender === 'Vyras' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-pink-500/10 text-pink-400 border border-pink-500/20'}`}>
                             {p.gender}
                           </span>
                         </td>
