@@ -11,8 +11,11 @@ const __dirname = path.dirname(__filename);
 
 // Resend setup
 let resend: Resend | null = null;
-if (process.env.RESEND_API_KEY) {
-  resend = new Resend(process.env.RESEND_API_KEY);
+const apiKey = process.env.RESEND_API_KEY?.trim().replace(/"/g, '');
+if (apiKey) {
+  resend = new Resend(apiKey);
+} else {
+  console.warn("RESEND_API_KEY kintamasis nerastas.");
 }
 
 // Google Sheets setup
@@ -154,11 +157,17 @@ async function startServer() {
     }
   });
 
-  app.post("/api/register", async (req, res) => {
+    app.post("/api/register", async (req, res) => {
     try {
       await appendToGoogleSheet(req.body);
-      // Siunčiame patvirtinimo laišką (nebūtina laukti atsakymo pabaigos, kad pagreitintume registraciją vartotojui)
-      sendConfirmationEmail(req.body).catch(e => console.error("Email error:", e));
+      
+      // Vercel (Serverless) aplinkoje privalome palaukti (await), kol laiškas bus išsiųstas,
+      // kitaip funkcija gali išsijungti anksčiau laiko.
+      try {
+        await sendConfirmationEmail(req.body);
+      } catch (e) {
+        console.error("Email sending failed:", e);
+      }
       
       res.status(201).json({ message: "Success" });
     } catch (error: any) {
