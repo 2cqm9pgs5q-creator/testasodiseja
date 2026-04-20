@@ -147,7 +147,15 @@ const RegistrationPage = () => {
               </div>
             ) : (
               <>
-                <div className="mb-6 md:mb-10"><h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-2 uppercase italic leading-tight">Dalyvio anketa</h2><p className="text-gray-500 font-medium text-xs sm:text-base">Užpildykite visus laukus registracijai.</p></div>
+                <div className="mb-6 md:mb-10">
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-2 uppercase italic leading-tight">Dalyvio anketa</h2>
+                  <p className="text-gray-500 font-medium text-xs sm:text-base">Užpildykite visus laukus registracijai.</p>
+                  <div className="mt-4 py-2 px-4 bg-red-50 border border-red-100 rounded-xl inline-block">
+                    <p className="text-red-600 font-black text-[10px] sm:text-xs tracking-[0.2em] uppercase italic">
+                      *** Maksimalus dalyvių skaičius 100 ***
+                    </p>
+                  </div>
+                </div>
                 <form onSubmit={handleRegister} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input required className="w-full p-4 bg-gray-50 rounded-2xl outline-none" placeholder="Vardas" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
